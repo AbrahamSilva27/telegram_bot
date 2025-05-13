@@ -5,7 +5,9 @@
   "type": "module",
   "dependencies": {
     "appwrite": "^17.0.2",
+    "body-parser": "^2.2.0",
     "dotenv": "^16.5.0",
+    "express": "^5.1.0",
     "node-telegram-bot-api": "^0.66.0"
   },
   "scripts": {
