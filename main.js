@@ -1,4 +1,4 @@
-// telegram-bot.js
+// main.js
 import 'dotenv/config';
 import TelegramBot from 'node-telegram-bot-api';
 import { Client, Databases, Query } from 'appwrite';
@@ -54,7 +54,7 @@ const formatRideMessage = (ride) => {
   const precioReal = price - 5.28;
   const ganancia = precioReal * 0.7;
   const phoneLink = ride.phone ? `https://wa.me/${ride.phone.replace(/[^\d]/g, '')}` : null;
-  const adminLink = 'https://wa.me/527223711236';
+  const adminLink = '[https://wa.me/527223711236](https://wa.me/527223711236)';
 
   return `🆕 *Nuevo viaje disponible*:
 
@@ -75,9 +75,7 @@ ${phoneLink ? `[📨 Enviar verificación de entrega](${phoneLink})` : ''}
 [📦 Comprobación de entrega para pago](${adminLink})
 
 Responde con /aceptar para tomar este viaje.
-
 Al finalizar el viaje, responde con /terminar.`;
-
 };
 
 const notifyDrivers = async (ride, bot, databases) => {
@@ -127,9 +125,9 @@ const setupBotHandlers = (bot, databases) => {
         pendingRide.$id,
         {
           driverName: driver.name,
-      plate: driver.plate,
-      driverChatId: chatId.toString(), // 👈 agregar este campo
-      status: 'en-curso',
+          plate: driver.plate,
+          driverChatId: chatId.toString(),
+          status: 'en-curso',
         }
       );
 
@@ -159,10 +157,9 @@ const setupBotHandlers = (bot, databases) => {
       const rides = await databases.listDocuments(
         process.env.APPWRITE_DATABASE_ID,
         process.env.EXPO_PUBLIC_APPWRITE_RIDES_COLLECTION_ID,
-        Query.equal('status', 'en-curso'),
-        Query.equal('driver_chat_id', chatId.toString())
+        [Query.equal('status', 'en-curso'), Query.equal('driverChatId', chatId.toString())]
       );
-      const ride = rides.documents.find(r => r.driverName && r.driverName.includes(chatId));
+      const ride = rides.documents[0];
 
       if (!ride) return bot.sendMessage(chatId, '❌ No tienes viajes en curso.');
 
@@ -185,6 +182,7 @@ const setupBotHandlers = (bot, databases) => {
     const text = msg.text?.trim();
     if (!text || !driverStates[chatId]) return;
     const state = driverStates[chatId];
+
     try {
       if (state.step === 'asking_name') {
         if (text.length < 2) return bot.sendMessage(chatId, '❌ Nombre muy corto');
@@ -230,6 +228,7 @@ async function main() {
   }
 }
 
+// Webhook handler (optional if deployed as endpoint function)
 export default async ({ req, res, log, error }) => {
   try {
     if (req.method === 'GET') return res.send('Bot is running');
