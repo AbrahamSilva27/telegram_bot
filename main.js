@@ -1,13 +1,15 @@
-// main.js
 import 'dotenv/config';
 import TelegramBot from 'node-telegram-bot-api';
 import { Client, Databases, Query } from 'appwrite';
+import express from 'express';
+import bodyParser from 'body-parser';
 
 let bot = null;
 let pendingRide = null;
 let rideTimeout = null;
 let lastNotifiedRideId = null;
 
+// Inicia el cliente de Appwrite
 const initializeAppwriteClient = () => {
   const client = new Client();
   client.setEndpoint(process.env.APPWRITE_ENDPOINT);
@@ -20,6 +22,7 @@ const initializeAppwriteClient = () => {
   return client;
 };
 
+// Obtiene el teléfono de un usuario por su ID
 const getPhoneByUserId = async (databases, userId) => {
   try {
     const response = await databases.listDocuments(
@@ -34,6 +37,7 @@ const getPhoneByUserId = async (databases, userId) => {
   }
 };
 
+// Inicia el bot de Telegram
 const initializeTelegramBot = () => {
   if (bot) return bot;
   bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
@@ -41,6 +45,7 @@ const initializeTelegramBot = () => {
   return bot;
 };
 
+// Formatea las paradas para el mensaje
 const formatStops = (stops = []) => {
   if (!Array.isArray(stops) || stops.length === 0) return 'Ninguna';
   return stops.map((stop, index) => {
@@ -49,6 +54,7 @@ const formatStops = (stops = []) => {
   }).join('\n');
 };
 
+// Formatea el mensaje del viaje
 const formatRideMessage = (ride) => {
   const price = parseFloat(ride.price);
   const precioReal = price - 5.28;
@@ -78,6 +84,7 @@ Responde con /aceptar para tomar este viaje.
 Al finalizar el viaje, responde con /terminar.`;
 };
 
+// Notifica a los conductores sobre el viaje
 const notifyDrivers = async (ride, bot, databases) => {
   if (ride.$id === lastNotifiedRideId) return;
   const phone = await getPhoneByUserId(databases, ride.user_id);
@@ -97,6 +104,7 @@ const notifyDrivers = async (ride, bot, databases) => {
   }
 };
 
+// Configura los manejadores del bot
 const setupBotHandlers = (bot, databases) => {
   const driverStates = {};
 
@@ -213,38 +221,53 @@ const setupBotHandlers = (bot, databases) => {
   });
 };
 
-main();
+// Crea y configura el servidor Express
+const createServer = () => {
+  const app = express();
+  const PORT = process.env.PORT || 10000;
+  
+  app.use(bodyParser.json());
 
+  app.get('/', (req, res) => {
+    res.send('🚀 Bot is running!');
+  });
+
+  // Webhook handler (opcional si se quiere usar un endpoint)
+  app.post('/webhook', async (req, res) => {
+    try {
+      const ride = req.body;
+      if (!ride || !ride.startPoint || !ride.endPoint || !ride.rideDate) {
+        return res.status(400).json({ success: false, error: 'Datos del viaje incompletos' });
+      }
+
+      const client = initializeAppwriteClient();
+      const databases = new Databases(client);
+      await notifyDrivers(ride, bot, databases);
+      return res.json({ success: true });
+    } catch (err) {
+      console.error(err.message);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.listen(PORT, () => {
+    console.log(`🌐 Servidor escuchando en puerto ${PORT}`);
+  });
+};
+
+// Inicializa la aplicación
 async function main() {
   try {
     const client = initializeAppwriteClient();
     const databases = new Databases(client);
     bot = initializeTelegramBot();
     setupBotHandlers(bot, databases);
-    console.log('🚀 Bot iniciado');
+    createServer();
+    console.log('🚀 Bot y servidor iniciados');
   } catch (error) {
     console.error('❌ Error al iniciar:', error.message);
     process.exit(1);
   }
 }
 
-// Webhook handler (optional if deployed as endpoint function)
-export default async ({ req, res, log, error }) => {
-  try {
-    if (req.method === 'GET') return res.send('Bot is running');
-    if (req.method !== 'POST') return res.json({ success: false, error: 'Method not allowed' }, 405);
-
-    const ride = req.body;
-    if (!ride || !ride.startPoint || !ride.endPoint || !ride.rideDate) {
-      return res.json({ success: false, error: 'Datos del viaje incompletos' }, 400);
-    }
-
-    const client = initializeAppwriteClient();
-    const databases = new Databases(client);
-    await notifyDrivers(ride, bot, databases);
-    return res.json({ success: true });
-  } catch (err) {
-    error(err.message);
-    return res.json({ success: false, error: err.message }, 500);
-  }
-};
+main();
