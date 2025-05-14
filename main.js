@@ -45,6 +45,10 @@ const initializeTelegramBot = () => {
   return bot;
 };
 
+const formatAddressLink = (label, address) =>
+  `[${label}](https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)})`;
+
+
 // Formatea las paradas para el mensaje
 const formatStops = (stops = []) => {
   if (!Array.isArray(stops) || stops.length === 0) return 'Ninguna';
@@ -60,14 +64,14 @@ const formatRideMessage = (ride) => {
   const precioReal = price - 5.28;
   const ganancia = precioReal * 0.7;
   const phoneLink = ride.phone ? `https://wa.me/${ride.phone.replace(/[^\d]/g, '')}` : null;
-  const adminLink = '[https://wa.me/527223711236](https://wa.me/527223711236)';
+  const adminLink = 'https://wa.me/527223711236';
 
   return `🆕 *Nuevo viaje disponible*:
 
 🧍 Usuario ID: ${ride.user_id}
 📞 Teléfono: ${ride.phone || 'No disponible'}
-🛣️ De: ${ride.startPoint}
-🏁 A: ${ride.endPoint}
+🛣️ ${formatAddressLink('De', ride.startPoint)}
+🏁 ${formatAddressLink('A', ride.endPoint)}
 📦 Peso: ${ride.weight}
 🚚 Tipo: ${ride.type}
 💬 Indicaciones punto final: ${ride.indications || 'Ninguna'}
