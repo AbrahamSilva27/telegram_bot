@@ -54,9 +54,11 @@ const formatStops = (stops = []) => {
   if (!Array.isArray(stops) || stops.length === 0) return 'Ninguna';
   return stops.map((stop, index) => {
     const [address, note] = stop.split('||').map(s => s.trim());
-    return `${index + 1}. 📍 Dirección: ${address}\n   ✏️ Indicaciones: ${note || 'Ninguna'}`;
+    const addressLink = `[${address}](https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)})`;
+    return `${index + 1}. 📍 Dirección: ${addressLink}\n   ✏️ Indicaciones: ${note || 'Ninguna'}`;
   }).join('\n');
 };
+
 
 // Formatea el mensaje del viaje
 const formatRideMessage = (ride) => {
@@ -70,8 +72,8 @@ const formatRideMessage = (ride) => {
 
 🧍 Usuario ID: ${ride.user_id}
 📞 Teléfono: ${ride.phone || 'No disponible'}
-🛣️ ${formatAddressLink('De', ride.startPoint)}
-🏁 ${formatAddressLink('A', ride.endPoint)}
+🛣️ Origen: ${formatAddressLink(ride.startPoint)}
+🏁 Destino: ${formatAddressLink(ride.endPoint)}
 📦 Peso: ${ride.weight}
 🚚 Tipo: ${ride.type}
 💬 Indicaciones punto final: ${ride.indications || 'Ninguna'}
@@ -87,6 +89,7 @@ ${phoneLink ? `[📨 Enviar verificación de entrega](${phoneLink})` : ''}
 Responde con /aceptar para tomar este viaje.
 Al finalizar el viaje, responde con /terminar.`;
 };
+
 
 // Notifica a los conductores sobre el viaje
 const notifyDrivers = async (ride, bot, databases) => {
