@@ -127,7 +127,7 @@ const formatRideMessage = (ride) => {
 💵 Ganancia: $${ganancia.toFixed(2)}
 
 🛑 Paradas:
-${formatStopsCoords(ride.stopsCoords, ride.stopsPoints)}
+${formatStopsCoords(ride.stops, ride.stopsPoints)}
 
 
 ${phoneLink ? `[📨 Enviar verificación de entrega](${phoneLink})` : ''}
