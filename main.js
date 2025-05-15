@@ -63,7 +63,7 @@ const formatCoordsLink = (label, coords) => {
   }
 
   if (lat == null || lng == null) {
-    return `${label}: Coordenadas inválidas`;
+    return `${text}: Coordenadas inválidas`;
   }
 
   return `[${label}](https://www.google.com/maps/place/${lat},${lng})`;
@@ -111,9 +111,8 @@ const formatRideMessage = (ride) => {
 
 🧍 Usuario ID: ${ride.user_id}
 📞 Teléfono: ${ride.phone || 'No disponible'}
-🛣️ Origen: ${formatCoordsLink('Origen', ride.originCoords)}
-🏁 Destino: ${formatCoordsLink('Destino', ride.destinationCoords)}
-
+🛣️ De: ${formatCoordsLink(ride.startPoint, ride.originCoords)}
+🏁 A: ${formatCoordsLink(ride.endPoint, ride.destinationCoords)}
 📦 Peso: ${ride.weight}
 🚚 Tipo: ${ride.type}
 💬 Indicaciones punto final: ${ride.indications || 'Ninguna'}
