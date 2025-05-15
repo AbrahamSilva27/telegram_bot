@@ -73,28 +73,35 @@ const formatCoordsLink = (label, coords) => {
 
 
 // Formatea las paradas para el mensaje
-const formatStopsCoords = (stopsCoords = []) => {
+const formatStopsCoords = (stopsCoords = [], stopsPoints = []) => {
   if (!Array.isArray(stopsCoords) || stopsCoords.length === 0) return 'Ninguna';
 
   return stopsCoords
     .map((coord, index) => {
       let lat, lng;
+      const label = stopsPoints?.[index] || `Parada ${index + 1}`;
+
       if (typeof coord === 'string') {
-        const parts = coord.split(',').map(Number);
+        const clean = coord.replace(/[\[\]\s]/g, '');
+        const parts = clean.split(',').map(Number);
         if (parts.length === 2 && !parts.some(isNaN)) {
           [lat, lng] = parts;
         }
       } else if (Array.isArray(coord) && coord.length === 2) {
-        [lat, lng] = coord;
+        const parts = coord.map(n => Number(n));
+        if (parts.every(n => !isNaN(n))) {
+          [lat, lng] = parts;
+        }
       }
 
       if (lat == null || lng == null) return null;
-      const link = `[Parada ${index + 1}](https://www.google.com/maps/place/${lat},${lng})`;
+      const link = `[${label}](https://www.google.com/maps/place/${lat},${lng})`;
       return `${index + 1}. 📍 ${link}`;
     })
     .filter(Boolean)
     .join('\n');
 };
+
 
 // Formatea el mensaje del viaje
 const formatRideMessage = (ride) => {
@@ -120,7 +127,8 @@ const formatRideMessage = (ride) => {
 💵 Ganancia: $${ganancia.toFixed(2)}
 
 🛑 Paradas:
-${formatStopsCoords(ride.stopsCoords)}
+${formatStopsCoords(ride.stopsCoords, ride.stopsPoints)}
+
 
 ${phoneLink ? `[📨 Enviar verificación de entrega](${phoneLink})` : ''}
 [📦 Comprobación de entrega para pago](${adminLink})
