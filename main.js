@@ -50,13 +50,13 @@ const formatCoordsLink = (label, coords) => {
 
   if (typeof coords === 'string') {
     const clean = coords.trim();
-    const parts = clean.split(',').map(Number);
+    const parts = clean.split(',').map(part => Number(part.trim()));
     if (parts.length === 2 && parts.every(n => !isNaN(n))) {
       [lat, lng] = parts;
     }
   } else if (Array.isArray(coords) && coords.length === 2) {
-    [lat, lng] = coords.map(Number);
-    if ([lat, lng].some(isNaN)) {
+    [lat, lng] = coords;
+    if ([lat, lng].some(n => typeof n !== 'number' || isNaN(n))) {
       lat = lng = null;
     }
   }
