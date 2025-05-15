@@ -49,13 +49,13 @@ const formatCoordsLink = (label, coords) => {
   let lat, lng;
 
   if (typeof coords === 'string') {
-    const clean = coords.trim();
-    const parts = clean.split(',').map(part => Number(part.trim()));
+    // Elimina corchetes y espacios extra
+    const clean = coords.replace(/[\[\]\s]/g, '');
+    const parts = clean.split(',').map(Number);
     if (parts.length === 2 && parts.every(n => !isNaN(n))) {
       [lat, lng] = parts;
     }
   } else if (Array.isArray(coords) && coords.length === 2) {
-    // Aseguramos que cada valor esté convertido a número
     const parts = coords.map(n => Number(n));
     if (parts.every(n => !isNaN(n))) {
       [lat, lng] = parts;
@@ -68,6 +68,7 @@ const formatCoordsLink = (label, coords) => {
 
   return `[${label}](https://www.google.com/maps/place/${lat},${lng})`;
 };
+
 
 
 
@@ -102,8 +103,8 @@ const formatRideMessage = (ride) => {
   const ganancia = precioReal * 0.7;
   const phoneLink = ride.phone ? `https://wa.me/${ride.phone.replace(/[^\d]/g, '')}` : null;
   const adminLink = 'https://wa.me/527223711236';
-  console.log('Origen:', ride.originCoords);
-console.log('Destino:', ride.destinationCoords);
+  console.log('Origen:', ride.originCoords, 'Tipo:', typeof ride.originCoords);
+  console.log('Destino:', ride.destinationCoords);
 
 
   return `🆕 *Nuevo viaje disponible*:
