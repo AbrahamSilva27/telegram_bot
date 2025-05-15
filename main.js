@@ -48,8 +48,9 @@ const initializeTelegramBot = () => {
 const formatCoordsLink = (label, coords) => {
   if (!Array.isArray(coords) || coords.length !== 2) return `${label}: Coordenadas inválidas`;
   const [lat, lng] = coords;
-  return `[${label}](https://www.google.com/maps/search/?api=1&query=${lat},${lng})`;
+  return `[${label}](https://www.google.com/maps/place/${lat},${lng})`;
 };
+
 
 
 
@@ -61,12 +62,13 @@ const formatStopsCoords = (stopsCoords = []) => {
     .map((coord, index) => {
       if (!Array.isArray(coord) || coord.length !== 2) return null;
       const [lat, lng] = coord;
-      const link = `[Parada ${index + 1}](https://www.google.com/maps/search/?api=1&query=${lat},${lng})`;
+      const link = `[Parada ${index + 1}](https://www.google.com/maps/place/${lat},${lng})`;
       return `${index + 1}. 📍 ${link}`;
     })
     .filter(Boolean)
     .join('\n');
 };
+
 
 
 
