@@ -63,10 +63,6 @@ const formatCoordsLink = (label, coords) => {
   return `[${label}](https://www.google.com/maps/place/${lat},${lng})`;
 };
 
-
-
-
-
 // Formatea las paradas para el mensaje
 const formatStopsCoords = (stopsCoords = []) => {
   if (!Array.isArray(stopsCoords) || stopsCoords.length === 0) return 'Ninguna';
@@ -91,10 +87,6 @@ const formatStopsCoords = (stopsCoords = []) => {
     .join('\n');
 };
 
-
-
-
-
 // Formatea el mensaje del viaje
 const formatRideMessage = (ride) => {
   const price = parseFloat(ride.price);
@@ -107,8 +99,9 @@ const formatRideMessage = (ride) => {
 
 🧍 Usuario ID: ${ride.user_id}
 📞 Teléfono: ${ride.phone || 'No disponible'}
-🛣️ Origen: ${formatCoordsLink(ride.originCoords)}
-🏁 Destino: ${formatCoordsLink(ride.destinationCoords)}
+🛣️ Origen: ${formatCoordsLink('Origen', ride.originCoords)}
+🏁 Destino: ${formatCoordsLink('Destino', ride.destinationCoords)}
+
 📦 Peso: ${ride.weight}
 🚚 Tipo: ${ride.type}
 💬 Indicaciones punto final: ${ride.indications || 'Ninguna'}
