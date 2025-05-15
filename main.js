@@ -46,11 +46,23 @@ const initializeTelegramBot = () => {
 };
 
 const formatCoordsLink = (label, coords) => {
-  if (!Array.isArray(coords) || coords.length !== 2) return `${label}: Coordenadas inválidas`;
-  const [lat, lng] = coords;
-  close.log(`Coordenadas ${label}: ${lat}, ${lng}`, coords);
+  let lat, lng;
+  if (typeof coords === 'string') {
+    const parts = coords.split(',').map(Number);
+    if (parts.length === 2 && !parts.some(isNaN)) {
+      [lat, lng] = parts;
+    }
+  } else if (Array.isArray(coords) && coords.length === 2) {
+    [lat, lng] = coords;
+  }
+
+  if (lat == null || lng == null) {
+    return `${label}: Coordenadas inválidas`;
+  }
+
   return `[${label}](https://www.google.com/maps/place/${lat},${lng})`;
 };
+
 
 
 
@@ -58,17 +70,27 @@ const formatCoordsLink = (label, coords) => {
 // Formatea las paradas para el mensaje
 const formatStopsCoords = (stopsCoords = []) => {
   if (!Array.isArray(stopsCoords) || stopsCoords.length === 0) return 'Ninguna';
-  
+
   return stopsCoords
     .map((coord, index) => {
-      if (!Array.isArray(coord) || coord.length !== 2) return null;
-      const [lat, lng] = coord;
+      let lat, lng;
+      if (typeof coord === 'string') {
+        const parts = coord.split(',').map(Number);
+        if (parts.length === 2 && !parts.some(isNaN)) {
+          [lat, lng] = parts;
+        }
+      } else if (Array.isArray(coord) && coord.length === 2) {
+        [lat, lng] = coord;
+      }
+
+      if (lat == null || lng == null) return null;
       const link = `[Parada ${index + 1}](https://www.google.com/maps/place/${lat},${lng})`;
       return `${index + 1}. 📍 ${link}`;
     })
     .filter(Boolean)
     .join('\n');
 };
+
 
 
 
@@ -85,8 +107,8 @@ const formatRideMessage = (ride) => {
 
 🧍 Usuario ID: ${ride.user_id}
 📞 Teléfono: ${ride.phone || 'No disponible'}
-🛣️ Origen: ${formatCoordsLink('Origen', ride.originCoords)}
-🏁 Destino: ${formatCoordsLink('Destino', ride.destinationCoords)}
+🛣️ Origen: ${formatCoordsLink(ride.originCoords)}
+🏁 Destino: ${formatCoordsLink(ride.destinationCoords)}
 📦 Peso: ${ride.weight}
 🚚 Tipo: ${ride.type}
 💬 Indicaciones punto final: ${ride.indications || 'Ninguna'}
