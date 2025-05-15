@@ -55,9 +55,10 @@ const formatCoordsLink = (label, coords) => {
       [lat, lng] = parts;
     }
   } else if (Array.isArray(coords) && coords.length === 2) {
-    [lat, lng] = coords;
-    if ([lat, lng].some(n => typeof n !== 'number' || isNaN(n))) {
-      lat = lng = null;
+    // Aseguramos que cada valor esté convertido a número
+    const parts = coords.map(n => Number(n));
+    if (parts.every(n => !isNaN(n))) {
+      [lat, lng] = parts;
     }
   }
 
@@ -67,6 +68,7 @@ const formatCoordsLink = (label, coords) => {
 
   return `[${label}](https://www.google.com/maps/place/${lat},${lng})`;
 };
+
 
 
 // Formatea las paradas para el mensaje
