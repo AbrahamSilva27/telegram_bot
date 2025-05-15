@@ -45,19 +45,29 @@ const initializeTelegramBot = () => {
   return bot;
 };
 
-const formatAddressLink = (label, address) =>
-  `[${label}](https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)})`;
+const formatCoordsLink = (label, coords) => {
+  if (!Array.isArray(coords) || coords.length !== 2) return `${label}: Coordenadas inválidas`;
+  const [lat, lng] = coords;
+  return `[${label}](https://www.google.com/maps/search/?api=1&query=${lat},${lng})`;
+};
+
 
 
 // Formatea las paradas para el mensaje
-const formatStops = (stops = []) => {
-  if (!Array.isArray(stops) || stops.length === 0) return 'Ninguna';
-  return stops.map((stop, index) => {
-    const [address, note] = stop.split('||').map(s => s.trim());
-    const addressLink = `[${address}](https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)})`;
-    return `${index + 1}. 📍 Dirección: ${addressLink}\n   ✏️ Indicaciones: ${note || 'Ninguna'}`;
-  }).join('\n');
+const formatStopsCoords = (stopsCoords = []) => {
+  if (!Array.isArray(stopsCoords) || stopsCoords.length === 0) return 'Ninguna';
+  
+  return stopsCoords
+    .map((coord, index) => {
+      if (!Array.isArray(coord) || coord.length !== 2) return null;
+      const [lat, lng] = coord;
+      const link = `[Parada ${index + 1}](https://www.google.com/maps/search/?api=1&query=${lat},${lng})`;
+      return `${index + 1}. 📍 ${link}`;
+    })
+    .filter(Boolean)
+    .join('\n');
 };
+
 
 
 // Formatea el mensaje del viaje
@@ -72,8 +82,8 @@ const formatRideMessage = (ride) => {
 
 🧍 Usuario ID: ${ride.user_id}
 📞 Teléfono: ${ride.phone || 'No disponible'}
-🛣️ Origen: ${formatAddressLink(ride.startPoint)}
-🏁 Destino: ${formatAddressLink(ride.endPoint)}
+🛣️ Origen: ${formatCoordsLink('Origen', ride.originCoords)}
+🏁 Destino: ${formatCoordsLink('Destino', ride.destinationCoords)}
 📦 Peso: ${ride.weight}
 🚚 Tipo: ${ride.type}
 💬 Indicaciones punto final: ${ride.indications || 'Ninguna'}
@@ -81,7 +91,7 @@ const formatRideMessage = (ride) => {
 💵 Ganancia: $${ganancia.toFixed(2)}
 
 🛑 Paradas:
-${formatStops(ride.stops)}
+${formatStopsCoords(ride.stopsCoords)}
 
 ${phoneLink ? `[📨 Enviar verificación de entrega](${phoneLink})` : ''}
 [📦 Comprobación de entrega para pago](${adminLink})
