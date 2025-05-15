@@ -73,36 +73,35 @@ const formatCoordsLink = (label, coords) => {
 
 
 // Formatea las paradas para el mensaje
-const formatStopsFull = (stopsCoords = [], stopsPoints = []) => {
-  if (!Array.isArray(stopsCoords) || stopsCoords.length === 0) return 'Ninguna';
+const formatStopsFullFromStrings = (stops = [], stopsCoords = []) => {
+  if (!Array.isArray(stops) || stops.length === 0) return 'Ninguna';
 
-  return stopsCoords
-    .map((coord, index) => {
-      let lat, lng;
-      const pointText = stopsPoints?.[index] || '';
-      const [address, note] = pointText.split('||').map(s => s.trim());
+  return stops.map((stop, index) => {
+    const [address, note] = stop.split('||').map(s => s.trim());
+    const coord = stopsCoords?.[index];
+    let lat, lng;
 
-      if (typeof coord === 'string') {
-        const clean = coord.replace(/[\[\]\s]/g, '');
-        const parts = clean.split(',').map(Number);
-        if (parts.length === 2 && !parts.some(isNaN)) {
-          [lat, lng] = parts;
-        }
-      } else if (Array.isArray(coord) && coord.length === 2) {
-        const parts = coord.map(n => Number(n));
-        if (parts.every(n => !isNaN(n))) {
-          [lat, lng] = parts;
-        }
+    if (typeof coord === 'string') {
+      const clean = coord.replace(/[\[\]\s]/g, '');
+      const parts = clean.split(',').map(Number);
+      if (parts.length === 2 && !parts.some(isNaN)) {
+        [lat, lng] = parts;
       }
+    } else if (Array.isArray(coord) && coord.length === 2) {
+      const parts = coord.map(n => Number(n));
+      if (parts.every(n => !isNaN(n))) {
+        [lat, lng] = parts;
+      }
+    }
 
-      if (lat == null || lng == null) return null;
+    const addressLink = (lat != null && lng != null)
+      ? `[${address}](https://www.google.com/maps/place/${lat},${lng})`
+      : address;
 
-      const mapsLink = `[${address || `Parada ${index + 1}`}](https://www.google.com/maps/place/${lat},${lng})`;
-      return `${index + 1}. 📍 Dirección: ${mapsLink}\n   ✏️ Indicaciones: ${note || 'Ninguna'}`;
-    })
-    .filter(Boolean)
-    .join('\n');
+    return `${index + 1}. 📍 Dirección: ${addressLink}\n   ✏️ Indicaciones: ${note || 'Ninguna'}`;
+  }).join('\n');
 };
+
 
 
 
@@ -130,7 +129,7 @@ const formatRideMessage = (ride) => {
 💵 Ganancia: $${ganancia.toFixed(2)}
 
 🛑 Paradas:
-${formatStopsFull(ride.stopsCoords, ride.stopsPoints)}
+${formatStopsFullFromStrings(ride.stops, ride.stopsCoords)}
 
 
 ${phoneLink ? `[📨 Enviar verificación de entrega](${phoneLink})` : ''}
