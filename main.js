@@ -47,13 +47,18 @@ const initializeTelegramBot = () => {
 
 const formatCoordsLink = (label, coords) => {
   let lat, lng;
+
   if (typeof coords === 'string') {
-    const parts = coords.split(',').map(Number);
-    if (parts.length === 2 && !parts.some(isNaN)) {
+    const clean = coords.trim();
+    const parts = clean.split(',').map(Number);
+    if (parts.length === 2 && parts.every(n => !isNaN(n))) {
       [lat, lng] = parts;
     }
   } else if (Array.isArray(coords) && coords.length === 2) {
-    [lat, lng] = coords;
+    [lat, lng] = coords.map(Number);
+    if ([lat, lng].some(isNaN)) {
+      lat = lng = null;
+    }
   }
 
   if (lat == null || lng == null) {
@@ -62,6 +67,7 @@ const formatCoordsLink = (label, coords) => {
 
   return `[${label}](https://www.google.com/maps/place/${lat},${lng})`;
 };
+
 
 // Formatea las paradas para el mensaje
 const formatStopsCoords = (stopsCoords = []) => {
@@ -94,6 +100,9 @@ const formatRideMessage = (ride) => {
   const ganancia = precioReal * 0.7;
   const phoneLink = ride.phone ? `https://wa.me/${ride.phone.replace(/[^\d]/g, '')}` : null;
   const adminLink = 'https://wa.me/527223711236';
+  console.log('Origen:', ride.originCoords);
+console.log('Destino:', ride.destinationCoords);
+
 
   return `🆕 *Nuevo viaje disponible*:
 
