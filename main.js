@@ -48,6 +48,7 @@ const initializeTelegramBot = () => {
 const formatCoordsLink = (label, coords) => {
   if (!Array.isArray(coords) || coords.length !== 2) return `${label}: Coordenadas inválidas`;
   const [lat, lng] = coords;
+  close.log(`Coordenadas ${label}: ${lat}, ${lng}`, coords);
   return `[${label}](https://www.google.com/maps/place/${lat},${lng})`;
 };
 
