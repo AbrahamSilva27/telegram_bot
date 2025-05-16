@@ -170,9 +170,23 @@ const notifyDrivers = async (ride, bot, databases) => {
     notifiedRidesByDriver[chatId].push(ride.$id);
 
     // Enviar el mensaje con el comando específico
-    await bot.sendMessage(chatId, message + `\n\n👉 Para aceptar este viaje, responde con:\n/aceptar ${ride.$id}`, {
-      parse_mode: 'Markdown'
+    await bot.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          {
+            text: '✅ Aceptar viaje',
+            callback_data: `aceptar_${ride.$id}`
+          },
+          {
+            text: '✅ Terminar viaje',
+            callback_data: `terminar_${ride.$id}`
+          }
+        ]]
+      }
     });
+    
+    
   }
 };
 
@@ -180,6 +194,26 @@ const notifyDrivers = async (ride, bot, databases) => {
 // Configura los manejadores del bot
 const setupBotHandlers = (bot, databases) => {
   const driverStates = {};
+
+  bot.on('callback_query', async (callbackQuery) => {
+    const { data, message } = callbackQuery;
+    const chatId = message.chat.id;
+  
+    if (!data) return;
+  
+    if (data.startsWith('aceptar_')) {
+      const rideId = data.replace('aceptar_', '');
+      bot.emit('text', { chat: { id: chatId }, text: `/aceptar ${rideId}` });
+    }
+  
+    if (data.startsWith('terminar_')) {
+      const rideId = data.replace('terminar_', '');
+      bot.emit('text', { chat: { id: chatId }, text: `/terminar ${rideId}` });
+    }
+  
+    bot.answerCallbackQuery(callbackQuery.id); // opcional: oculta el botón presionado
+  });
+  
 
   bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
