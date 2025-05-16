@@ -327,20 +327,29 @@ const createServer = () => {
   // Webhook handler (opcional si se quiere usar un endpoint)
   app.post('/webhook', async (req, res) => {
     try {
-      const ride = req.body;
-      if (!ride || !ride.startPoint || !ride.endPoint || !ride.rideDate) {
-        return res.status(400).json({ success: false, error: 'Datos del viaje incompletos' });
+      const { $id } = req.body;
+  
+      if (!$id) {
+        return res.status(400).json({ success: false, error: 'Falta el ID del viaje' });
       }
-
+  
       const client = initializeAppwriteClient();
       const databases = new Databases(client);
+      const ride = await databases.getDocument(
+        process.env.APPWRITE_DATABASE_ID,
+        process.env.EXPO_PUBLIC_APPWRITE_RIDES_COLLECTION_ID,
+        $id
+      );
+  
       await notifyDrivers(ride, bot, databases);
       return res.json({ success: true });
+  
     } catch (err) {
       console.error(err.message);
       return res.status(500).json({ success: false, error: err.message });
     }
   });
+  
 
   app.listen(PORT, () => {
     console.log(`🌐 Servidor escuchando en puerto ${PORT}`);
