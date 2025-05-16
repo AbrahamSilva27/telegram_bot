@@ -139,7 +139,6 @@ ${formatStopsFullFromStrings(ride.stops, ride.stopsCoords)}
 ${phoneLink ? `[📨 Enviar verificación de entrega](${phoneLink})` : ''}
 [📦 Comprobación de entrega para pago](${adminLink})
 
-Responde con /aceptar para tomar este viaje.
 Al finalizar el viaje, responde con /terminar.`;
 };
 
