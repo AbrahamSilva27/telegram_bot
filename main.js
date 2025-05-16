@@ -203,12 +203,12 @@ const setupBotHandlers = (bot, databases) => {
   
     if (data.startsWith('aceptar_')) {
       const rideId = data.replace('aceptar_', '');
-      bot.emit('text', { chat: { id: chatId }, text: `/aceptar ${rideId}` });
+      handleAceptarRide(chatId, rideId, bot, databases);
     }
   
     if (data.startsWith('terminar_')) {
       const rideId = data.replace('terminar_', '');
-      bot.emit('text', { chat: { id: chatId }, text: `/terminar ${rideId}` });
+      handleTerminarRide(chatId, rideId, bot, databases);
     }
   
     bot.answerCallbackQuery(callbackQuery.id); // opcional: oculta el botón presionado
