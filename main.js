@@ -190,6 +190,9 @@ const setupBotHandlers = (bot, databases) => {
   bot.onText(/\/aceptar (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const rideId = match[1];
+
+    console.log(`🛎️ Comando /aceptar recibido de ${chatId} para ride ${rideId}`); // <- Agrega esto
+
   
     const ride = pendingRides[rideId];
     if (!ride) {
