@@ -254,31 +254,37 @@ const setupBotHandlers = (bot, databases) => {
   });
   
 
-  bot.onText(/\/terminar/, async (msg) => {
+  bot.onText(/\/terminar (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
+    const rideId = match[1];
+  
     try {
-      const rides = await databases.listDocuments(
+      // Buscar el viaje por ID y que esté en curso y asignado al conductor
+      const ride = await databases.getDocument(
         process.env.APPWRITE_DATABASE_ID,
         process.env.EXPO_PUBLIC_APPWRITE_RIDES_COLLECTION_ID,
-        [Query.equal('status', 'en-curso'), Query.equal('driverChatId', chatId.toString())]
+        rideId
       );
-      const ride = rides.documents[0];
-
-      if (!ride) return bot.sendMessage(chatId, '❌ No tienes viajes en curso.');
-
+  
+      if (!ride || ride.driverChatId !== chatId.toString() || ride.status !== 'en-curso') {
+        return bot.sendMessage(chatId, '❌ No tienes un viaje en curso con ese ID.');
+      }
+  
+      // Marcar como completado
       await databases.updateDocument(
         process.env.APPWRITE_DATABASE_ID,
         process.env.EXPO_PUBLIC_APPWRITE_RIDES_COLLECTION_ID,
-        ride.$id,
+        rideId,
         { status: 'completado' }
       );
-
-      bot.sendMessage(chatId, '✅ Has marcado el viaje como completado. ¡Gracias!');
+  
+      bot.sendMessage(chatId, `✅ Has marcado el viaje ${rideId} como completado. ¡Gracias!`);
     } catch (err) {
-      console.error('❌ Error al terminar:', err);
-      bot.sendMessage(chatId, '❌ Error al completar el viaje.');
+      console.error('❌ Error al terminar el viaje con ID:', rideId, err);
+      bot.sendMessage(chatId, '❌ Error al completar el viaje. Intenta de nuevo.');
     }
   });
+  
 
   bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
