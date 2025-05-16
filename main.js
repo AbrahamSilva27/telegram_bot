@@ -189,6 +189,91 @@ const notifyDrivers = async (ride, bot, databases) => {
     
   }
 };
+// Maneja la aceptación del viaje
+const handleAceptarRide = async (chatId, rideId, bot, databases) => {
+  const ride = pendingRides[rideId];
+  if (!ride) {
+    return bot.sendMessage(chatId, '❌ Este viaje ya no está disponible o ya fue tomado.');
+  }
+
+  const notified = notifiedRidesByDriver[chatId];
+  if (!notified || !notified.includes(rideId)) {
+    return bot.sendMessage(chatId, '❌ No tienes este viaje en tu lista de notificaciones.');
+  }
+
+  try {
+    const driverDoc = await databases.listDocuments(
+      process.env.APPWRITE_DATABASE_ID,
+      process.env.APPWRITE_DRIVERS_COLLECTION_ID,
+      [Query.equal('chat_id', chatId.toString())]
+    );
+    const driver = driverDoc.documents[0];
+    if (!driver) {
+      return bot.sendMessage(chatId, '❌ No estás registrado.');
+    }
+
+    await databases.updateDocument(
+      process.env.APPWRITE_DATABASE_ID,
+      process.env.EXPO_PUBLIC_APPWRITE_RIDES_COLLECTION_ID,
+      rideId,
+      {
+        driverName: driver.name,
+        plate: driver.plate,
+        driverChatId: chatId.toString(),
+        status: 'en-curso',
+      }
+    );
+
+    bot.sendMessage(chatId, `✅ ¡Has aceptado el viaje ${rideId}! Gracias, ${driver.name}.`);
+
+    const allDrivers = (await databases.listDocuments(
+      process.env.APPWRITE_DATABASE_ID,
+      process.env.APPWRITE_DRIVERS_COLLECTION_ID
+    )).documents;
+
+    for (const other of allDrivers) {
+      if (other.chat_id !== chatId.toString()) {
+        bot.sendMessage(other.chat_id, '❌ El viaje ya fue tomado.');
+      }
+    }
+
+    delete pendingRides[rideId];
+    for (const driverId in notifiedRidesByDriver) {
+      notifiedRidesByDriver[driverId] = notifiedRidesByDriver[driverId].filter(id => id !== rideId);
+    }
+
+  } catch (err) {
+    console.error('❌ Error al aceptar:', err);
+    bot.sendMessage(chatId, '❌ Error al aceptar el viaje. Intenta otra vez.');
+  }
+};
+
+const handleTerminarRide = async (chatId, rideId, bot, databases) => {
+  try {
+    const ride = await databases.getDocument(
+      process.env.APPWRITE_DATABASE_ID,
+      process.env.EXPO_PUBLIC_APPWRITE_RIDES_COLLECTION_ID,
+      rideId
+    );
+
+    if (!ride || ride.driverChatId !== chatId.toString() || ride.status !== 'en-curso') {
+      return bot.sendMessage(chatId, '❌ No tienes un viaje en curso con ese ID.');
+    }
+
+    await databases.updateDocument(
+      process.env.APPWRITE_DATABASE_ID,
+      process.env.EXPO_PUBLIC_APPWRITE_RIDES_COLLECTION_ID,
+      rideId,
+      { status: 'completado' }
+    );
+
+    bot.sendMessage(chatId, `✅ Has marcado el viaje ${rideId} como completado. ¡Gracias!`);
+  } catch (err) {
+    console.error('❌ Error al terminar el viaje con ID:', rideId, err);
+    bot.sendMessage(chatId, '❌ Error al completar el viaje. Intenta de nuevo.');
+  }
+};
+
 
 
 // Configura los manejadores del bot
@@ -199,20 +284,21 @@ const setupBotHandlers = (bot, databases) => {
     const { data, message } = callbackQuery;
     const chatId = message.chat.id;
   
-    if (!data) return;
-  
-    if (data.startsWith('aceptar_')) {
+    if (data?.startsWith('aceptar_')) {
       const rideId = data.replace('aceptar_', '');
       handleAceptarRide(chatId, rideId, bot, databases);
     }
   
-    if (data.startsWith('terminar_')) {
+    if (data?.startsWith('terminar_')) {
       const rideId = data.replace('terminar_', '');
       handleTerminarRide(chatId, rideId, bot, databases);
     }
   
-    bot.answerCallbackQuery(callbackQuery.id); // opcional: oculta el botón presionado
+    bot.answerCallbackQuery(callbackQuery.id);
   });
+  
+
+  
   
 
   bot.onText(/\/start/, (msg) => {
@@ -224,6 +310,8 @@ const setupBotHandlers = (bot, databases) => {
   bot.onText(/\/aceptar (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const rideId = match[1];
+    handleAceptarRide(chatId, rideId, bot, databases);
+
 
     console.log(`🛎️ Comando /aceptar recibido de ${chatId} para ride ${rideId}`); // <- Agrega esto
 
@@ -291,6 +379,8 @@ const setupBotHandlers = (bot, databases) => {
   bot.onText(/\/terminar (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const rideId = match[1];
+    handleTerminarRide(chatId, rideId, bot, databases);
+
   
     try {
       // Buscar el viaje por ID y que esté en curso y asignado al conductor
