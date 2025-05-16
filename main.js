@@ -5,9 +5,13 @@ import express from 'express';
 import bodyParser from 'body-parser';
 
 let bot = null;
-let pendingRide = null;
-let rideTimeout = null;
-let lastNotifiedRideId = null;
+
+// Nuevo: almacena todos los viajes disponibles
+const pendingRides = {};  // rideId -> ride
+
+// Nuevo: almacena qué viajes fueron enviados a cada conductor
+const notifiedRidesByDriver = {};  // chat_id -> [rideId1, rideId2, ...]
+
 
 // Inicia el cliente de Appwrite
 const initializeAppwriteClient = () => {
@@ -142,11 +146,13 @@ Al finalizar el viaje, responde con /terminar.`;
 
 // Notifica a los conductores sobre el viaje
 const notifyDrivers = async (ride, bot, databases) => {
-  if (ride.$id === lastNotifiedRideId) return;
+  if (!ride?.$id) return;
+
   const phone = await getPhoneByUserId(databases, ride.user_id);
   ride.phone = phone;
-  lastNotifiedRideId = ride.$id;
-  pendingRide = ride;
+
+  // Guardar el viaje en el mapa de viajes pendientes
+  pendingRides[ride.$id] = ride;
 
   const drivers = (await databases.listDocuments(
     process.env.APPWRITE_DATABASE_ID,
@@ -156,9 +162,21 @@ const notifyDrivers = async (ride, bot, databases) => {
   const message = formatRideMessage(ride);
 
   for (const driver of drivers) {
-    await bot.sendMessage(driver.chat_id, message, { parse_mode: 'Markdown' });
+    const chatId = driver.chat_id;
+
+    // Registrar que a este conductor se le notificó este viaje
+    if (!notifiedRidesByDriver[chatId]) {
+      notifiedRidesByDriver[chatId] = [];
+    }
+    notifiedRidesByDriver[chatId].push(ride.$id);
+
+    // Enviar el mensaje con el comando específico
+    await bot.sendMessage(chatId, message + `\n\n👉 Para aceptar este viaje, responde con:\n/aceptar ${ride.$id}`, {
+      parse_mode: 'Markdown'
+    });
   }
 };
+
 
 // Configura los manejadores del bot
 const setupBotHandlers = (bot, databases) => {
@@ -170,10 +188,21 @@ const setupBotHandlers = (bot, databases) => {
     driverStates[chatId] = { step: 'asking_name' };
   });
 
-  bot.onText(/\/aceptar/, async (msg) => {
+  bot.onText(/\/aceptar (.+)/, async (msg, match) => {
     const chatId = msg.chat.id;
-    if (!pendingRide) return bot.sendMessage(chatId, '❌ No hay ningún viaje disponible.');
-
+    const rideId = match[1];
+  
+    const ride = pendingRides[rideId];
+    if (!ride) {
+      return bot.sendMessage(chatId, '❌ Este viaje ya no está disponible o ya fue tomado.');
+    }
+  
+    // Verifica que este viaje fue enviado a este conductor
+    const notified = notifiedRidesByDriver[chatId];
+    if (!notified || !notified.includes(rideId)) {
+      return bot.sendMessage(chatId, '❌ No tienes este viaje en tu lista de notificaciones.');
+    }
+  
     try {
       const driverDoc = await databases.listDocuments(
         process.env.APPWRITE_DATABASE_ID,
@@ -181,12 +210,14 @@ const setupBotHandlers = (bot, databases) => {
         [Query.equal('chat_id', chatId.toString())]
       );
       const driver = driverDoc.documents[0];
-      if (!driver) return bot.sendMessage(chatId, '❌ No estás registrado.');
-
+      if (!driver) {
+        return bot.sendMessage(chatId, '❌ No estás registrado.');
+      }
+  
       await databases.updateDocument(
         process.env.APPWRITE_DATABASE_ID,
         process.env.EXPO_PUBLIC_APPWRITE_RIDES_COLLECTION_ID,
-        pendingRide.$id,
+        rideId,
         {
           driverName: driver.name,
           plate: driver.plate,
@@ -194,26 +225,32 @@ const setupBotHandlers = (bot, databases) => {
           status: 'en-curso',
         }
       );
-
-      bot.sendMessage(chatId, `✅ ¡Has aceptado el viaje! Gracias, ${driver.name}.`);
-
-      const others = await databases.listDocuments(
+  
+      bot.sendMessage(chatId, `✅ ¡Has aceptado el viaje ${rideId}! Gracias, ${driver.name}.`);
+  
+      const allDrivers = (await databases.listDocuments(
         process.env.APPWRITE_DATABASE_ID,
         process.env.APPWRITE_DRIVERS_COLLECTION_ID
-      );
-      for (const other of others.documents) {
+      )).documents;
+  
+      for (const other of allDrivers) {
         if (other.chat_id !== chatId.toString()) {
           bot.sendMessage(other.chat_id, '❌ El viaje ya fue tomado.');
         }
       }
-
-      clearTimeout(rideTimeout);
-      pendingRide = null;
+  
+      // Elimina el viaje de la lista de pendientes y notificados
+      delete pendingRides[rideId];
+      for (const driverId in notifiedRidesByDriver) {
+        notifiedRidesByDriver[driverId] = notifiedRidesByDriver[driverId].filter(id => id !== rideId);
+      }
+  
     } catch (err) {
       console.error('❌ Error al aceptar:', err);
       bot.sendMessage(chatId, '❌ Error al aceptar el viaje. Intenta otra vez.');
     }
   });
+  
 
   bot.onText(/\/terminar/, async (msg) => {
     const chatId = msg.chat.id;
