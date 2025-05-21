@@ -4,6 +4,36 @@ import { Client, Databases, Query } from 'appwrite';
 import express from 'express';
 import bodyParser from 'body-parser';
 
+import { Expo } from 'expo-server-sdk';
+
+const expo = new Expo();
+
+// Función para enviar notificación push
+const sendPushNotification = async (expoPushToken, title, body) => {
+  if (!Expo.isExpoPushToken(expoPushToken)) {
+    console.error(`❌ Token inválido: ${expoPushToken}`);
+    return;
+  }
+
+  const messages = [{
+    to: expoPushToken,
+    sound: 'default',
+    title,
+    body,
+  }];
+
+  try {
+    const chunks = expo.chunkPushNotifications(messages);
+    for (let chunk of chunks) {
+      await expo.sendPushNotificationsAsync(chunk);
+    }
+    console.log('✅ Notificación enviada');
+  } catch (error) {
+    console.error('❌ Error enviando notificación:', error);
+  }
+};
+
+
 let bot = null;
 
 // Nuevo: almacena todos los viajes disponibles
@@ -113,7 +143,7 @@ const formatStopsFullFromStrings = (stops = [], stopsCoords = []) => {
 const formatRideMessage = (ride) => {
   const price = parseFloat(ride.price);
   const precioReal = price - 5.28;
-  const ganancia = precioReal * 0.7;
+  const ganancia = precioReal * 0.737;
   const phoneLink = ride.phone ? `https://wa.me/${ride.phone.replace(/[^\d]/g, '')}` : null;
   const adminLink = 'https://wa.me/527223711236';
   console.log('Origen:', ride.originCoords, 'Tipo:', typeof ride.originCoords);
@@ -138,8 +168,7 @@ ${formatStopsFullFromStrings(ride.stops, ride.stopsCoords)}
 
 ${phoneLink ? `[📨 Enviar verificación de entrega](${phoneLink})` : ''}
 [📦 Comprobación de entrega para pago](${adminLink})
-
-Al finalizar el viaje, responde con /terminar.`;
+`;
 };
 
 
@@ -242,6 +271,22 @@ const handleAceptarRide = async (chatId, rideId, bot, databases) => {
       notifiedRidesByDriver[driverId] = notifiedRidesByDriver[driverId].filter(id => id !== rideId);
     }
 
+    // 🔔 Enviar notificación push al usuario
+    const userPhoneDoc = await databases.listDocuments(
+      process.env.APPWRITE_DATABASE_ID,
+      process.env.EXPO_PUBLIC_APPWRITE_USER_PHONES_COLLECTION_ID,
+      [Query.equal('user_id', ride.user_id)]
+    );
+    const expoPushToken = userPhoneDoc.documents[0]?.expoPushToken;
+
+    if (expoPushToken) {
+      await sendPushNotification(
+        expoPushToken,
+        '¡Tu viaje fue aceptado!',
+        `Tu conductor ${driver.name} ha aceptado tu viaje.`
+      );
+    }
+
   } catch (err) {
     console.error('❌ Error al aceptar:', err);
     bot.sendMessage(chatId, '❌ Error al aceptar el viaje. Intenta otra vez.');
@@ -268,6 +313,23 @@ const handleTerminarRide = async (chatId, rideId, bot, databases) => {
     );
 
     bot.sendMessage(chatId, `✅ Has marcado el viaje ${rideId} como completado. ¡Gracias!`);
+
+    // 🔔 Enviar notificación push al usuario
+    const userPhoneDoc = await databases.listDocuments(
+      process.env.APPWRITE_DATABASE_ID,
+      process.env.EXPO_PUBLIC_APPWRITE_USER_PHONES_COLLECTION_ID,
+      [Query.equal('user_id', ride.user_id)]
+    );
+    const expoPushToken = userPhoneDoc.documents[0]?.expoPushToken;
+
+    if (expoPushToken) {
+      await sendPushNotification(
+        expoPushToken,
+        '¡Tu viaje ha terminado!',
+        'Gracias por usar nuestra app. ¡Esperamos que vuelvas pronto!'
+      );
+    }
+
   } catch (err) {
     console.error('❌ Error al terminar el viaje con ID:', rideId, err);
     bot.sendMessage(chatId, '❌ Error al completar el viaje. Intenta de nuevo.');
